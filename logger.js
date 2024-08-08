@@ -3,11 +3,11 @@ const cluster = require('cluster');
 const path = require('path');
 const {env} = require('process');
 const cursor = require('ansi')(process.stdout);
+const {formatTime, formatDate} = require('./dchcore/time.js');
+const {isString, escapeRegExp, rng, qw} = require('./dchcore/util.js');
+const {useLock, obtainLock} = require('./dchcore/concurrent.js');
 const files = require('./files.js');
-const {formatTime, formatDate} = require('./time.js');
-const {isString, escapeRegExp, rng} = require('./util.js');
 const {Colors, applyColorizers, clr, colorize} = require('./color.js');
-const {useLock, obtainLock} = require('./concurrent.js');
 
 const E = module.exports;
 
@@ -48,7 +48,7 @@ const timestamp = level=>(cluster.isPrimary ? `[P:${process.pid}]` : `[W${cluste
     (level?.length ? level+': ' : '');
 
 const logToFile = v=>{
-    if (env.LOG_FILE_ENABLE=='true' && env.LOG_FILE_DIR)
+    if (+env.LOG_FILE_ENABLE && env.LOG_FILE_DIR)
         files.append(path.join(env.APP_DIR||env.HOME, env.LOG_FILE_DIR, (env.LOG_FILE_PREFIX||'')+'_'+formatDate()+'.log'), v+os.EOL);
 };
 

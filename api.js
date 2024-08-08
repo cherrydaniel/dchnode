@@ -45,18 +45,9 @@ E.createExpressApp = (opt={}, builder)=>{
 E.err = (message, status, code, extra)=>Object.assign(new Error(),
     {message, status, code, extra});
 
-const handleResult = (res, result)=>{
-    if (result === E.RES_SENT)
-        return;
-    if (res.headersSent)
-        return;
-    res.json(Object.assign({ok: true}, result));
-};
-
 E.handle = fn=>(req, res, next)=>{ (async ()=>{
     try {
         let result = await fn(req, res);
-        handleResult(res, result);
         if (result!==E.RES_SENT&&!res.headersSent)
             res.json(Object.assign({ok: true}, result));
         next();
