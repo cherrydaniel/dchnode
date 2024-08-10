@@ -12,8 +12,10 @@
   "dependencies": {
     "aws-sdk": "^2.1672.0",
     "dchnode": "file:",
+    "dotenv": "^16.4.5",
     "fs": "^0.0.1-security",
     "lodash": "^4.17.21",
+    "require-from-string": "^2.0.2",
     "ws": "^8.18.0"
   },
   "devDependencies": {
