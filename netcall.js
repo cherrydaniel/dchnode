@@ -2,8 +2,8 @@ const fs = require('fs');
 const {JSDOM} = require('jsdom');
 const {Readable} = require('stream');
 const {finished} = require('stream/promises');
-const {isString} = require('./util/util.js');
-const {wait} = require('./util/concurrent.js');
+const {isString} = require('./dchcore/util.js');
+const {wait} = require('./dchcore/concurrent.js');
 
 const E = module.exports = netCall;
 

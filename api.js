@@ -2,9 +2,9 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const {env} = require('process');
-const {loge} = require('./util/logger.js');
-const {formatTime} = require('./util/time.js');
-const {isObject} = require('./util/util.js');
+const {loge} = require('./logger.js');
+const {formatTime} = require('./dchcore/time.js');
+const {isObject} = require('./dchcore/util.js');
 
 const allowedOrigins = [...env.DOMAIN?.split(/\s*,\s*/g)||[], env.CLIENT_URL].filter(Boolean);
 
