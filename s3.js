@@ -12,10 +12,11 @@ E.createInstance = ({region, accessKeyId, secretAccessKey})=>new AWS.S3({
     },
 });
 
-E.upload = (filepath, dataStream)=>{
+E.upload = (filepath, dataStream, opt={})=>{
+    const {bucket} = opt;
     const w = wait();
     E.createInstance().upload({
-        Bucket: env.BUCKETEER_BUCKET_NAME,
+        Bucket: bucket||env.BUCKETEER_BUCKET_NAME,
         Key: filepath,
         Body: dataStream,
     }, (err, data)=>{
@@ -26,9 +27,10 @@ E.upload = (filepath, dataStream)=>{
     return w.promise;
 };
 
-E.download = filepath=>{
+E.download = (filepath, opt={})=>{
+    const {bucket} = opt;
     return E.createInstance().getObject({
-        Bucket: env.BUCKETEER_BUCKET_NAME,
+        Bucket: bucket||env.BUCKETEER_BUCKET_NAME,
         Key: filepath,
     }).createReadStream();
 };
