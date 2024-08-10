@@ -1,22 +1,17 @@
 const {env} = require('process');
-const AWS = require('aws-sdk');
+const {S3} = require('@aws-sdk/client-s3');
+const {Upload} = require('@aws-sdk/lib-storage');
 const {wait} = require('./dchcore/concurrent.js');
 
 const E = module.exports;
 
 const resolveOpt = (opt={})=>({
+    ...opt,
     client: opt.client||E.createClient(),
     bucket: opt.bucket||env.BUCKETEER_BUCKET_NAME,
-    ...opt,
 });
 
-const wCallback = w=>(err, data)=>{
-    if (err)
-        return void w.reject(err);
-    w.resolve(data);
-};
-
-E.createClient = ({region, accessKeyId, secretAccessKey}={})=>new AWS.S3({
+E.createClient = ({region, accessKeyId, secretAccessKey}={})=>new S3({
     region: region||env.BUCKETEER_AWS_REGION,
     credentials: {
         accessKeyId: accessKeyId||env.BUCKETEER_AWS_ACCESS_KEY_ID,
@@ -26,31 +21,19 @@ E.createClient = ({region, accessKeyId, secretAccessKey}={})=>new AWS.S3({
 
 E.upload = (filepath, dataStream, opt={})=>{
     const {client, bucket} = resolveOpt(opt);
-    const w = wait();
-    client.upload({
+    return new Upload({client, params: {
         Bucket: bucket,
         Key: filepath,
         Body: dataStream,
-    }, wCallback(w));
-    return w.promise;
+    }}).done();
 };
 
-E.download = (filepath, opt={})=>{
+E.download = async (filepath, opt={})=>{
     const {client, bucket} = resolveOpt(opt);
-    return client.getObject({
+    return (await client.getObject({
         Bucket: bucket,
         Key: filepath,
-    }).createReadStream();
-};
-
-const _listObjects = (opt={})=>{
-    const {client, bucket, continuationToken} = resolveOpt(opt);
-    const w = wait();
-    client.listObjectsV2({
-        Bucket: bucket,
-        ...continuationToken&&{ContinuationToken: continuationToken},
-    }, wCallback(w));
-    return w.promise;
+    })).Body.transformToWebStream();
 };
 
 E.listObjects = (opt={})=>{
@@ -60,7 +43,10 @@ E.listObjects = (opt={})=>{
     (async ()=>{
         let continuationToken;
         while (true) {
-            let data = await _listObjects({client, bucket, continuationToken});
+            let data = await client.listObjectsV2({
+                Bucket: bucket,
+                ...continuationToken&&{ContinuationToken: continuationToken},
+            });
             allKeys.push(...data.Contents.map(c=>c.Key));
             if (!data.IsTruncated) {
                 w.resolve(allKeys);
@@ -74,12 +60,10 @@ E.listObjects = (opt={})=>{
 
 E.deleteObject = (filepath, opt={})=>{
     const {client, bucket} = resolveOpt(opt);
-    const w = wait();
-    client.deleteObject({
+    return client.deleteObject({
         Bucket: bucket,
         Key: filepath,
-    }, wCallback(w));
-    return w.promise;
+    });
 };
 
 // TODO: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/Package/-aws-sdk-client-s3/Class/S3Client/
