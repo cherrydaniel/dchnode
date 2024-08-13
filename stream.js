@@ -1,4 +1,5 @@
 const {Readable, Writable, Transform} = require('stream');
+const {finished} = require('stream/promises');
 const _ = require('lodash');
 const {wait} = require('./dchcore/concurrent.js');
 
@@ -89,4 +90,4 @@ E.createObjectWritable = handler=>E.createWritable({objectMode: true}, handler);
 
 E.createStringifyTransform = ()=>E.createObjectTransform(obj=>JSON.stringify(obj));
 
-E.createResWriter = res=>E.createWritable(chunk=>res.write(chunk)); // PROBABLY UNNEEDED!!!
+E.waitPipeTo = (src, dst, opt)=>finished(src.pipe(dst, opt));
