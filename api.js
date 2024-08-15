@@ -1,10 +1,12 @@
+const {finished} = require('stream/promises');
+const {env} = require('process');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-const {env} = require('process');
 const {loge} = require('./logger.js');
 const {formatTime} = require('./dchcore/time.js');
 const {isObject} = require('./dchcore/util.js');
+const {createObjectReadable, createStringifyTransform} = require('./stream.js');
 
 const allowedOrigins = [...env.DOMAIN?.split(/\s*,\s*/g)||[], env.CLIENT_URL].filter(Boolean);
 
@@ -37,6 +39,7 @@ E.createExpressApp = (opt={}, builder)=>{
     app.use(express.json());
     app.use(cookieParser());
     app.use(E.mwUnifyParams);
+    app.use(E.mwStream);
     builder(app);
     app.use(E.mwErrorHandler);
     return app.listen(port, ()=>console.log(`API listening on port ${port}`));
@@ -102,6 +105,16 @@ E.mwParseQuery = schema=>(req, res, next)=>{
         }
     });
     req.query = q;
+    next();
+};
+
+E.mwStream = (req, res, next)=>{
+    res.sendStream = async creator=>{
+        await createObjectReadable(creator)
+            .pipe(createStringifyTransform())
+            .pipe(res);
+        return E.RES_SENT;
+    };
     next();
 };
 
