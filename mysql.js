@@ -1,8 +1,8 @@
 const {env} = require('process');
 const fs = require('fs');
-const path = require('path');
 const mysql = require('mysql');
-const {wait} = require('../util/concurrent.js');
+const {appPath} = require('./files.js');
+const {wait} = require('./dchcore/concurrent.js');
 
 const E = module.exports;
 
@@ -15,7 +15,7 @@ E.connect = async ()=>{
         password: env.DB_PASSWORD,
         database: env.DB_NAME,
         ...env.DB_CERT_FILE && {
-            ssl: {ca: fs.readFileSync(path.join(env.HOME, env.DB_CERT_FILE))},
+            ssl: {ca: fs.readFileSync(appPath(env.DB_CERT_FILE))},
         },
     });
     con.connect(err=>{
@@ -33,12 +33,16 @@ E.useConnection = async cb=>{
 };
 
 E.query = (stmt, opt={})=>E.useConnection(con=>{
-    const {data} = opt;
+    const {data, asStream} = opt;
     if (data) {
         for (let [k, v] of Object.entries(data))
             stmt = stmt.replace(new RegExp(`:${k}`, 'g'), con.escape(v));
     }
     const w = wait();
+    if (asStream) {
+        w.resolve(con.query(stmt).stream());
+        return w.promise;
+    }
     con.query(stmt, (err, result, fields)=>{
         if (err)
             return void w.reject(err);
