@@ -59,8 +59,13 @@ E.handle = fn=>(req, res, next)=>{ (async ()=>{
 
 E.mwHandle = fn=>(req, res, next)=>{ (async ()=>{
     try {
-        await fn(req, res);
-        next();
+        let nextCalled = false;
+        await fn(req, res, ()=>{
+            nextCalled = true;
+            next();
+        });
+        if (!nextCalled)
+            next();
     } catch (e) { next(e); }
 })(); };
 
