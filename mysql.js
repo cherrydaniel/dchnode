@@ -1,8 +1,10 @@
 const {env} = require('process');
 const fs = require('fs');
-const mysql = require('mysql');
-const {appPath} = require('./files.js');
+const {finished} = require('stream/promises');
+const mysql = require('mysql2');
 const {wait} = require('./dchcore/concurrent.js');
+const {appPath} = require('./files.js');
+const {createObjectWritable} = require('./stream.js');
 
 const E = module.exports;
 
@@ -32,17 +34,25 @@ E.useConnection = async cb=>{
     finally { con.end(); }
 };
 
+E.queryStream = (stmt, opt={})=>E.useConnection(async con=>{
+    const {data} = opt;
+    if (data) {
+        for (let [k, v] of Object.entries(data))
+            stmt = stmt.replace(new RegExp(`:${k}`, 'g'), con.escape(v));
+    }
+    return await con.query(stmt).stream();
+});
+
+E.queryIterate = (stmt, cb, opt={})=>E.useConnection(async ()=>await finished(
+    (await E.queryStream(stmt, opt)).pipe(createObjectWritable(row=>cb(row)))));
+
 E.query = (stmt, opt={})=>E.useConnection(con=>{
-    const {data, asStream} = opt;
+    const {data} = opt;
     if (data) {
         for (let [k, v] of Object.entries(data))
             stmt = stmt.replace(new RegExp(`:${k}`, 'g'), con.escape(v));
     }
     const w = wait();
-    if (asStream) {
-        w.resolve(con.query(stmt).stream());
-        return w.promise;
-    }
     con.query(stmt, (err, result, fields)=>{
         if (err)
             return void w.reject(err);
