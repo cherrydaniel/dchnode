@@ -82,15 +82,6 @@ E.mwUnifyParams = (req, res, next)=>{
     next();
 };
 
-E.mwValidateParams = (...params)=>(req, res, next)=>{
-    const params = req.allParams || unifyParams(req);
-    for (let p of params) {
-        if (!params.hasOwnProperty(p))
-            return void next(E.err(`Missing parameter: ${p}`, 400, 'missing_parameter'));
-    }
-    next();
-};
-
 E.mwParseQuery = schema=>(req, res, next)=>{
     const q = {};
     Object.entries(req.query).forEach(([k, v])=>{
@@ -150,7 +141,7 @@ E.mwErrorHandler = (err, req, res, next)=>{
             cookies: req.cookies,
         },
     });
-    res.status(err.status).json({
+    res.status(status).json({
         ok: false,
         message,
         status,
