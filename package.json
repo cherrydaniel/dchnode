@@ -15,6 +15,7 @@
     "dchnode": "file:",
     "dotenv": "^16.4.5",
     "fs": "^0.0.1-security",
+    "joi": "^17.13.3",
     "lodash": "^4.17.21",
     "require-from-string": "^2.0.2",
     "ws": "^8.18.0"
