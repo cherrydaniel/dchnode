@@ -69,6 +69,10 @@ E.mwHandle = fn=>(req, res, next)=>{ (async ()=>{
     } catch (e) { next(e); }
 })(); };
 
+E.mwValidate = schema=>E.mwHandle(req=>{
+    
+});
+
 const unifyParams = req=>Object.assign({}, req.params, req.query, structuredClone(req.body));
 
 E.mwUnifyParams = (req, res, next)=>{
