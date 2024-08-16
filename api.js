@@ -3,7 +3,6 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const joi = require('joi');
-const {loge} = require('./logger.js');
 const {formatTime} = require('./dchcore/time.js');
 const {isObject} = require('./dchcore/util.js');
 const {createObjectReadable, createStringifyTransform} = require('./stream.js');
@@ -137,7 +136,7 @@ E.mwErrorHandler = (err, req, res, next)=>{
         code='error',
         extra={},
     } = err;
-    loge('Rest API error', {
+    console.error('Rest API error', {
         message,
         status,
         code,
