@@ -1,8 +1,8 @@
-const {finished} = require('stream/promises');
 const {env} = require('process');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const joi = require('joi');
 const {loge} = require('./logger.js');
 const {formatTime} = require('./dchcore/time.js');
 const {isObject} = require('./dchcore/util.js');
@@ -70,7 +70,7 @@ E.mwHandle = fn=>(req, res, next)=>{ (async ()=>{
 })(); };
 
 E.mwValidate = schema=>E.mwHandle(req=>{
-    const {error} = schema.validate(req.allParams)||{};
+    const {error} = joi.object.keys(schema).validate(req.allParams)||{};
     if (error)
         throw E.err(`Validation error: ${error.details.map(e=>e.message).join(', ')}.`,
             'validation_error', 400);
