@@ -2,6 +2,8 @@ const {env} = require('process');
 const {S3} = require('@aws-sdk/client-s3');
 const {Upload} = require('@aws-sdk/lib-storage');
 const {wait} = require('./dchcore/concurrent.js');
+const { createObjectReadable, accumulateObjects, createObjectWritable } = require('./stream.js');
+const { finished } = require('stream/promises');
 
 const E = module.exports;
 
@@ -36,26 +38,21 @@ E.download = async (filepath, opt={})=>{
     })).Body.transformToWebStream();
 };
 
-E.listObjects = (opt={})=>{
+E.listObjects = opt=>accumulateObjects(E.streamObjects(opt));
+
+E.streamObjects = (opt={})=>{
     const {client, bucket} = resolveOpt(opt);
-    const w = wait();
-    const allKeys = [];
-    (async ()=>{
-        let continuationToken;
-        while (true) {
-            let data = await client.listObjectsV2({
-                Bucket: bucket,
-                ...continuationToken&&{ContinuationToken: continuationToken},
-            });
-            allKeys.push(...data.Contents.map(c=>c.Key));
-            if (!data.IsTruncated) {
-                w.resolve(allKeys);
-                break;
-            }
-            continuationToken = data.NextContinuationToken;
-        }
-    })();
-    return w.promise;
+    let continuationToken;
+    return createObjectReadable(async push=>{
+        const data = await client.listObjectsV2({
+            Bucket: bucket,
+            ...continuationToken&&{ContinuationToken: continuationToken},
+        });
+        data.Contents.map(c=>c.Key).forEach(k=>push(k));
+        if (!data.IsTruncated)
+            return void push(null);
+        continuationToken = data.NextContinuationToken;
+    });
 };
 
 E.deleteObject = (filepath, opt={})=>{

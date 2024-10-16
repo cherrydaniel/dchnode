@@ -1,10 +1,11 @@
+const _ = require('lodash');
 const {env} = require('process');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const joi = require('joi');
 const {formatTime} = require('./dchcore/time.js');
-const {isObject} = require('./dchcore/util.js');
+const {isObject, qw} = require('./dchcore/util.js');
 const {createObjectReadable, createStringifyTransform} = require('./stream.js');
 
 const allowedOrigins = [...env.DOMAIN?.split(/\s*,\s*/g)||[], env.CLIENT_URL].filter(Boolean);
@@ -94,7 +95,7 @@ E.mwParseQuery = schema=>(req, res, next)=>{
             case Boolean: q[k] = [].includes(v?.toLowerCase()); break;
             case Object:
                 try {
-                    q[k] = JSON.parse(v); 
+                    q[k] = JSON.parse(v);
                     q[k] = isObject(q[k]) && q[k];
                 } catch {}
                 break;
@@ -134,20 +135,10 @@ E.mwErrorHandler = (err, req, res, next)=>{
         extra,
         time: Date.now(),
         timestamp: formatTime(),
-        request: {
-            headers: req.headers,
-            query: req.query,
-            body: req.body,
-            cookies: req.cookies,
-        },
+        request: _.pick(req, qw`headers query body cookies`),
     });
-    res.status(status).json({
-        ok: false,
-        message,
-        status,
-        code,
-        extra,
-    });
+    res.status(status).json(
+        {ok: false, message, status, code, extra});
 };
 
 E.withAPIRouter = fn=>()=>{
