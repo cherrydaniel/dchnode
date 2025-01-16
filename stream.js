@@ -1,7 +1,8 @@
 const {Readable, Writable, Transform} = require('stream');
 const {finished, pipeline} = require('stream/promises');
 const _ = require('lodash');
-const {wait} = require('./dchcore/concurrent.js');
+const {wait, sleep} = require('./dchcore/concurrent.js');
+const { qw, isLittleEndian } = require('./dchcore/util.js');
 
 const E = module.exports;
 
@@ -40,7 +41,7 @@ E.createReadable = (opt, handler)=>{
     const rs = Readable(opt);
     rs._read = async ()=>{
         let pushed = false;
-        let result = await handler(v=>{
+        let result = await handler.call(rs, v=>{
             rs.push(v);
             pushed = true;
         });
@@ -57,10 +58,10 @@ E.createTransform = (opt, handler)=>{
     }
     return Transform({
         ...opt,
-        transform: async (chunk, enc, cb)=>{
+        async transform(chunk, enc, cb){
             let pushed = false;
             try {
-                let result = await handler(chunk, enc, (e, v)=>{
+                let result = await handler.call(this, chunk, enc, (e, v)=>{
                     cb(e, v);
                     pushed = true;
                 });
@@ -81,7 +82,7 @@ E.createWritable = (opt, handler)=>{
     const ws = Writable(opt);
     ws._write = async (chunk, enc, next)=>{
         let calledNext = false;
-        await handler(chunk, enc, ()=>{
+        await handler.call(ws, chunk, enc, ()=>{
             next();
             calledNext = true;
         });
@@ -208,3 +209,134 @@ E.str2json = ()=>new Transform({
     },
 });
 
+E.streamFetchResponse = resp=>{
+    let reader = resp.body.getReader();
+    return E.createReadable(async push=>{
+        let {done, value} = await reader.read();
+        push(done ? null : value);
+    });
+};
+
+const bufferWriteFuncs = {
+    writeBigInt64BE: {bytes: 8},
+    writeBigInt64LE: {bytes: 8},
+    writeBigUInt64BE: {bytes: 8},
+    writeBigUInt64LE: {bytes: 8},
+    writeDoubleBE: {bytes: 8},
+    writeDoubleLE: {bytes: 8},
+    writeFloatBE: {bytes: 4},
+    writeFloatLE: {bytes: 4},
+    writeInt8: {bytes: 1},
+    writeInt16BE: {bytes: 2},
+    writeInt16LE: {bytes: 2},
+    writeInt32BE: {bytes: 4},
+    writeInt32LE: {bytes: 4},
+    writeUInt8: {bytes: 1},
+    writeUInt16BE: {bytes: 2},
+    writeUInt16LE: {bytes: 2},
+    writeUInt32BE: {bytes: 4},
+    writeUInt32LE: {bytes: 4},
+};
+
+E.streamWriter = (opt={}, handler)=>{
+    if (_.isFunction(opt)) {
+        handler = opt;
+        opt = {};
+    }
+    let writer = {
+        write: v=>writer._push(v),
+        end: ()=>writer._push(null),
+    };
+    _.entries(bufferWriteFuncs).forEach(([fn, {bytes}])=>{
+        writer[fn] = v=>{
+            let buf = Buffer.allocUnsafe(bytes);
+            buf[fn](v);
+            writer._push(buf);
+        };
+    });
+    return E.createReadable(opt, async push=>{
+        writer._push = push;
+        await handler.apply(writer);
+    });
+};
+
+const bufferReadFuncs = {
+    readBigInt64BE: {bytes: 8},
+    readBigInt64LE: {bytes: 8},
+    readBigUInt64BE: {bytes: 8},
+    readBigUInt64LE: {bytes: 8},
+    readDoubleBE: {bytes: 8},
+    readDoubleLE: {bytes: 8},
+    readFloatBE: {bytes: 4},
+    readFloatLE: {bytes: 4},
+    readInt8: {bytes: 1},
+    readInt16BE: {bytes: 2},
+    readInt16LE: {bytes: 2},
+    readInt32BE: {bytes: 4},
+    readInt32LE: {bytes: 4},
+    readUInt8: {bytes: 1},
+    readUInt16BE: {bytes: 2},
+    readUInt16LE: {bytes: 2},
+    readUInt32BE: {bytes: 4},
+    readUInt32LE: {bytes: 4},
+};
+
+E.streamReader = (opt={}, handler)=>{
+    if (_.isFunction(opt)) {
+        handler = opt;
+        opt = {};
+    }
+    let {
+        decoderFormat,
+        ...writableOpt
+    } = opt;
+    let waiter, waitingForBytes, offset = 0, buffer = [];
+    let takeBytes = (numBytes, w)=>{
+        if (buffer.length<numBytes)
+            return false;
+        let chunk = buffer.slice(0, numBytes);
+        buffer = buffer.slice(numBytes);
+        offset += numBytes;
+        w.resolve(Buffer.from(new Uint8Array(chunk).buffer));
+        return true;
+    };
+    let read = async numBytes=>{
+        let w = wait();
+        if (!takeBytes(numBytes, w)) {
+            waiter = w;
+            waitingForBytes = numBytes;
+        }
+        return w.promise;
+    };
+    let decoder = new TextDecoder(decoderFormat);
+    let reader = {
+        read,
+        skip: async len=>void await read(len),
+        get offset(){ return offset; },
+        readString: async len=>decoder.decode(await read(len)),
+    };
+    _.entries(bufferReadFuncs).forEach(([fn, {bytes}])=>reader[fn] = async (...args)=>(await read(bytes))[fn](...args));
+    handler.apply(reader);
+    return E.createWritable(writableOpt, chunk=>{
+        buffer.push(...chunk);
+        if (waiter && takeBytes(waitingForBytes, waiter)) {
+            waiter = undefined;
+            waitingForBytes = undefined;
+        }
+    });
+};
+
+E._testBufferedReadable = async ()=>{
+    E.streamWriter(async function(){
+        this.write('BM')
+        await sleep(2000);
+        this.writeUInt8(2);
+        await sleep(2000);
+        this.end();
+    }).pipe(E.streamReader(async function(){
+        let sig = await this.readString(2);
+        console.log(sig);
+        let two = await this.readUInt8();
+        console.log(two);
+    }));
+};
