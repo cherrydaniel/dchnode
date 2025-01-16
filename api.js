@@ -19,7 +19,7 @@ E.createExpressApp = (opt={}, builder)=>{
         builder = opt;
         opt = {};
     }
-    let {port, noCors} = opt;
+    let {port, noCors, errorHandler=E.mwErrorHandler} = opt;
     const app = express();
     if (noCors) {
         app.use(cors());
@@ -41,7 +41,7 @@ E.createExpressApp = (opt={}, builder)=>{
     app.use(E.mwUnifyParams);
     app.use(E.mwStream);
     builder(app);
-    app.use(E.mwErrorHandler);
+    app.use(errorHandler);
     return app.listen(port, ()=>console.log(`API listening on port ${port}`));
 };
 
