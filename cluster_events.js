@@ -36,7 +36,7 @@ class ClusterEventEmitter {
                         label: this.#label,
                         action: Action.WORKER_EVENT,
                         event,
-                        data: args,
+                        data,
                     }));
                     break;
             }

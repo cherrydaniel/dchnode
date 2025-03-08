@@ -1,7 +1,7 @@
 const cluster = require('cluster');
 const _ = require('lodash');
-const { wait } = require('./util/concurrent');
-const { generateId, strEnum } = require('./util/util');
+const {wait} = require('./dchcore/concurrent.js');
+const {generateId, strEnum, dynamicProxy} = require('./dchcore/util.js');
 
 const E = module.exports;
 
@@ -52,15 +52,12 @@ const IPCEvent = strEnum`
 `;
 
 const _masterIPC = {};
-
-E.masterIPC = ()=>_masterIPC;
+E.masterIPC = dynamicProxy(()=>_masterIPC);
 
 const _workerIPCs = {};
-
-E.workerIPC = id=>_workerIPCs[id];
+E.workerIPC = dynamicProxy(()=>_workerIPCs);
 
 const _masterIPCWaiters = [];
-
 E.waitMasterIPC = ()=>{
     const w = wait();
     _masterIPCWaiters.push(w);
@@ -68,7 +65,6 @@ E.waitMasterIPC = ()=>{
 };
 
 const _workerIPCWaiters = {};
-
 E.waitWorkerIPC = id=>{
     const w = wait();
     if (!_workerIPCWaiters[id])
@@ -153,7 +149,7 @@ _.once(()=>{
                 delete activeCalls[workerId];
                 delete _workerIPCs[workerId];
             });
-            _workerIPCWaiters[workerId]?.forEach(w=>w.resolve());
+            _workerIPCWaiters[workerId]?.forEach(w=>w.resolve(E.workerIPC[workerId]));
             delete _workerIPCWaiters[workerId];
         });
     } else {
@@ -181,7 +177,7 @@ _.once(()=>{
                     return w.promise;
                 },
             }), {}));
-            _masterIPCWaiters.forEach(w=>w.resolve());
+            _masterIPCWaiters.forEach(w=>w.resolve(E.masterIPC));
             _masterIPCWaiters.length = 0;
         });
         E.callMaster(IPCEvent.WORKER_READY);
