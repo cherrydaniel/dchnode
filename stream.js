@@ -1,8 +1,8 @@
 const {Readable, Writable, Transform} = require('stream');
 const {finished, pipeline} = require('stream/promises');
 const _ = require('lodash');
-const {wait, sleep} = require('./dchcore/concurrent.js');
-const { qw, isLittleEndian } = require('./dchcore/util.js');
+const {wait, sleep} = require('./dchcore2/concurrent.js');
+const { qw, isLittleEndian } = require('./dchcore2/util.js');
 
 const E = module.exports;
 
