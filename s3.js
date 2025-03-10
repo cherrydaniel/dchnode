@@ -1,9 +1,7 @@
 const {env} = require('process');
 const {S3} = require('@aws-sdk/client-s3');
 const {Upload} = require('@aws-sdk/lib-storage');
-const {wait} = require('./dchcore/concurrent.js');
-const { createObjectReadable, accumulateObjects, createObjectWritable } = require('./stream.js');
-const { finished } = require('stream/promises');
+const {createObjectReadable, accumulateObjects} = require('./stream.js');
 
 const E = module.exports;
 

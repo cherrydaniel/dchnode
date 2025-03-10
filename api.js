@@ -4,8 +4,8 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const joi = require('joi');
-const {formatTime} = require('./dchcore/time.js');
-const {isObject, qw} = require('./dchcore/util.js');
+const {formatTime} = require('./time.js');
+const {qw} = require('./util.js');
 const {createObjectReadable, createStringifyTransform} = require('./stream.js');
 
 const allowedOrigins = [...env.DOMAIN?.split(/\s*,\s*/g)||[], env.CLIENT_URL].filter(Boolean);
@@ -96,7 +96,7 @@ E.mwParseQuery = schema=>(req, res, next)=>{
             case Object:
                 try {
                     q[k] = JSON.parse(v);
-                    q[k] = isObject(q[k]) && q[k];
+                    q[k] = _.isObject(q[k]) && q[k];
                 } catch {}
                 break;
             case Array:

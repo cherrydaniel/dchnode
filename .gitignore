@@ -129,5 +129,6 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-test/
+test
+test_util.js
 .vendor.json

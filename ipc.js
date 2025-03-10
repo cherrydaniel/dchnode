@@ -1,7 +1,7 @@
 const cluster = require('cluster');
 const _ = require('lodash');
-const {wait} = require('./dchcore/concurrent.js');
-const {generateId, strEnum, dynamicProxy} = require('./dchcore/util.js');
+const {wait} = require('./concurrent.js');
+const {generateId, strEnum, dynamicProxy} = require('./util.js');
 
 const E = module.exports;
 

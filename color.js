@@ -1,4 +1,4 @@
-const {templateToString} = require('./dchcore/util.js');
+const {templateToString} = require('./util.js');
 
 const E = module.exports;
 

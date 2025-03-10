@@ -3,8 +3,8 @@ const EventEmitter = require('events');
 const requireFromString = require('require-from-string');
 const {streamToString} = require('./stream.js');
 const s3 = require('./s3.js');
-const {useLock} = require('./dchcore/concurrent.js');
-const {clearAndAppend} = require('./dchcore/util.js');
+const {useLock} = require('./concurrent.js');
+const {clearAndAppend} = require('./util.js');
 
 const E = module.exports;
 

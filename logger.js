@@ -3,9 +3,9 @@ const cluster = require('cluster');
 const path = require('path');
 const {env} = require('process');
 const cursor = require('ansi')(process.stdout);
-const {formatTime, formatDate} = require('./dchcore/time.js');
-const {isString, escapeRegExp, rng, qw} = require('./dchcore/util.js');
-const {useLock, obtainLock} = require('./dchcore/concurrent.js');
+const {formatTime, formatDate} = require('./time.js');
+const {isString, escapeRegExp, rng} = require('./util.js');
+const {useLock, obtainLock} = require('./concurrent.js');
 const files = require('./files.js');
 const {Colors, applyColorizers, clr, colorize} = require('./color.js');
 

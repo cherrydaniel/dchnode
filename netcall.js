@@ -1,9 +1,9 @@
 const fs = require('fs');
+const _ = require('lodash');
 const {JSDOM} = require('jsdom');
 const {Readable} = require('stream');
 const {finished} = require('stream/promises');
-const {isString} = require('./dchcore/util.js');
-const {wait} = require('./dchcore/concurrent.js');
+const {wait} = require('./concurrent.js');
 
 const E = module.exports = netCall;
 
@@ -17,7 +17,7 @@ const qsParse = (qs={})=>{
 };
 
 async function netCall(opt={}) {
-    if (isString(opt))
+    if (_.isString(opt))
         opt = {url: opt};
     let {
         url,
