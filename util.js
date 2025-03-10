@@ -1,7 +1,6 @@
 const _ = require('lodash');
 const crypto = require('crypto');
 const net = require('net');
-const {wait} = require('./concurrent.js');
 
 const E = module.exports;
 
@@ -19,15 +18,14 @@ E.hashObject = v=>{
     return v;
 }
 
-E.findFreePort = ()=>{
-    let w = wait(), srv = net.createServer();
+E.findFreePort = ()=>new Promise(resolve=>{
+    let srv = net.createServer();
     srv.listen(0, ()=>{
         let {port} = srv.address();
         srv.close();
-        w.resolve(port);
+        resolve(port);
     });
-    return w.promise;
-};
+});
 
 E.tagFn = cb=>function(parts, ...args){
     let result = '';
