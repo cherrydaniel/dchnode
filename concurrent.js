@@ -1,4 +1,4 @@
-const {generateId, createError, callbacks, isNode} = require('./util.js');
+const {generateId, createError, callbacks} = require('./util.js');
 
 const E = module.exports;
 
@@ -311,10 +311,7 @@ E.asyncFilter = async (arr, predicate)=>{
 
 E.waitTick = ()=>{
     let w = E.wait();
-    if (isNode)
-        process.nextTick(w.resolve);
-    else
-        setTimeout(w.resolve, 0);
+    process.nextTick(w.resolve);
     return w.promise;
 };
 

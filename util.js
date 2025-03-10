@@ -160,10 +160,6 @@ E.callbacks = ()=>{
 
 E.isMocha = ()=>!!+process.env.MOCHA;
 
-E.isNode = ()=>typeof window === 'undefined' && typeof process === 'object';
-
-E.isBrowser = ()=>!E.isNode();
-
 E.isLittleEndian = (()=>{
     let t32 = new Uint32Array(1);
     let t8 = new Uint8Array(t32.buffer);
