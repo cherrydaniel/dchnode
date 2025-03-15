@@ -8,8 +8,6 @@ const {formatTime} = require('./time.js');
 const {qw} = require('./util.js');
 const {createObjectReadable, createStringifyTransform} = require('./stream.js');
 
-const allowedOrigins = [...env.DOMAIN?.split(/\s*,\s*/g)||[], env.CLIENT_URL].filter(Boolean);
-
 const E = module.exports;
 
 E.RES_SENT = Symbol();
@@ -25,13 +23,7 @@ E.createExpressApp = (opt={}, builder)=>{
         app.use(cors());
     } else {
         app.use(cors({
-            origin: function (origin, callback) {
-                if (!origin)
-                    return callback(null, true);
-                if (allowedOrigins.includes(origin))
-                    return callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'), false);
-                return callback(null, true);
-            },
+            origin: env.CLIENT_URL,
             methods: 'GET,POST,PUT,DELETE',
             credentials: true,
         }));
