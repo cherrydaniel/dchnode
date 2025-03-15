@@ -132,3 +132,4 @@ dist
 test
 test_util.js
 .vendor.json
+playground.js

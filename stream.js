@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const {Readable, Writable, Transform} = require('stream');
 const {finished, pipeline} = require('stream/promises');
 const _ = require('lodash');
@@ -150,6 +151,19 @@ E.limit = (num, opt={})=>new Transform({
         cb();
         if (++this._count==num)
             this.emit('end');
+    },
+    ...opt,
+});
+
+E.skip = (num, opt={})=>new Transform({
+    construct(cb){
+        this._count = 0;
+        cb();
+    },
+    transform(chunk, enc, cb){
+        if (this._count++>=num)
+            this.push(chunk);
+        cb();
     },
     ...opt,
 });
@@ -338,4 +352,18 @@ E._testBufferedReadable = async ()=>{
         let two = await this.readUInt8();
         console.log(two);
     }));
+};
+
+E.streamHash = (input, opt={})=>{
+    let {algorithm='sha1', encoding='hex'} = opt;
+    let w = wait();
+    let hash = crypto.createHash(algorithm);
+    hash.setEncoding(encoding);
+    input.on('error', e=>w.reject(e));
+    input.on('end', ()=>{
+        hash.end();
+        w.resolve(hash.read());
+    });
+    input.pipe(hash);
+    return w.promise;
 };
