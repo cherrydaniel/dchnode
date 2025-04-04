@@ -65,7 +65,7 @@ E.mwValidate = schema=>E.mwHandle(req=>{
     const {error} = joi.object().keys(schema).validate(req.allParams)||{};
     if (error)
         throw E.err(`Validation error: ${error.details.map(e=>e.message).join(', ')}.`,
-            400, 'validation_error');
+            400, 'validation_error', error.details);
 });
 
 const unifyParams = req=>Object.assign({}, req.params, req.query, structuredClone(req.body));
