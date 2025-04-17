@@ -189,3 +189,17 @@ E.lazyProxy = factory=>{
         },
     });
 };
+
+const _forEachField = (obj, cb, path)=>{
+    if (_.isObject(obj)) {
+        return void _.entries(obj).forEach(
+            ([k, v])=>_forEachField(v, cb, path+(path.length ? '.' : '')+k));
+    }
+    if (_.isArray(obj)) {
+        return void obj.forEach(
+            (v, i)=>_forEachField(v, cb, path+(path.length ? '.' : '')+i));
+    }
+    cb(path, obj);
+};
+
+E.forEachField = (obj, cb)=>_forEachField(obj, cb, '');

@@ -4,8 +4,10 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const joi = require('joi');
+const createDOMPurify = require('dompurify');
+const {JSDOM} = require('jsdom');
 const {formatTime} = require('./time.js');
-const {qw} = require('./util.js');
+const {qw, forEachField} = require('./util.js');
 const {createObjectReadable, createStringifyTransform} = require('./stream.js');
 
 const E = module.exports;
@@ -17,7 +19,12 @@ E.createExpressApp = (opt={}, builder)=>{
         builder = opt;
         opt = {};
     }
-    let {port, noCors, errorHandler=E.mwErrorHandler} = opt;
+    let {
+        port,
+        noCors,
+        errorHandler=E.mwErrorHandler,
+        onListen,
+    } = opt;
     const app = express();
     if (noCors) {
         app.use(cors());
@@ -34,7 +41,7 @@ E.createExpressApp = (opt={}, builder)=>{
     app.use(E.mwStream);
     builder(app);
     app.use(errorHandler);
-    return app.listen(port, ()=>console.log(`API listening on port ${port}`));
+    return app.listen(port, onListen||(()=>console.log(`API listening on port ${port}`)));
 };
 
 E.err = (message, status, code, extra)=>Object.assign(new Error(),
@@ -66,6 +73,39 @@ E.mwValidate = schema=>E.mwHandle(req=>{
     if (error)
         throw E.err(`Validation error: ${error.details.map(e=>e.message).join(', ')}.`,
             400, 'validation_error', error.details);
+});
+
+let DOMPurify;
+const SANITIZE_SOURCE = {
+    BODY: 'body',
+    QUERY: 'query',
+    PARAMS: 'params',
+};
+E.mwSanitize = (paths, opt={})=>E.mwHandle(req=>{
+    if (!DOMPurify)
+        DOMPurify = createDOMPurify(new JSDOM('').window);
+    if (_.isObject(paths)) {
+        opt = paths;
+        paths = null;
+    }
+    if (paths&&!_.isArray(paths))
+        paths = [paths];
+    let {source=[SANITIZE_SOURCE.BODY], throwOnDirty} = opt;
+    if (!Array.isArray(source))
+        source = [source];
+    source.forEach(src=>{
+        let _src = req[src];
+        forEachField(_src, (path, v)=>{
+            if (paths?.length) {
+                if (!paths.some(p=>p.constructor.name=='RegExp' ? p.test(path) : p==path))
+                    return;
+            }
+            let clean = DOMPurify.sanitize(v, opt);
+            if (throwOnDirty&&clean!=v)
+                throw E.err('Sanitization error', 400, 'sanitization_error', {src, path, value: v});
+            _.set(_src, path, clean);
+        });
+    });
 });
 
 const unifyParams = req=>Object.assign({}, req.params, req.query, structuredClone(req.body));
