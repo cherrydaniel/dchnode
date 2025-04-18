@@ -76,7 +76,7 @@ E.mwValidate = schema=>E.mwHandle(req=>{
 });
 
 let DOMPurify;
-const SANITIZE_SOURCE = {
+E.SANITIZE_SOURCE = {
     BODY: 'body',
     QUERY: 'query',
     PARAMS: 'params',
@@ -90,7 +90,7 @@ E.mwSanitize = (paths, opt={})=>E.mwHandle(req=>{
     }
     if (paths&&!_.isArray(paths))
         paths = [paths];
-    let {source=[SANITIZE_SOURCE.BODY], throwOnDirty} = opt;
+    let {source=[E.SANITIZE_SOURCE.BODY], throwOnDirty, stripHTML} = opt;
     if (!Array.isArray(source))
         source = [source];
     source.forEach(src=>{
@@ -100,7 +100,9 @@ E.mwSanitize = (paths, opt={})=>E.mwHandle(req=>{
                 if (!paths.some(p=>p.constructor.name=='RegExp' ? p.test(path) : p==path))
                     return;
             }
-            let clean = DOMPurify.sanitize(v, opt);
+            let clean = DOMPurify.sanitize(v, {
+                ...stripHTML&&{ALLOWED_TAGS: []},
+            });
             if (throwOnDirty&&clean!=v)
                 throw E.err('Sanitization error', 400, 'sanitization_error', {src, path, value: v});
             _.set(_src, path, clean);
