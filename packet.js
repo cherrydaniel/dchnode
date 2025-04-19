@@ -15,10 +15,10 @@ class PacketWriter {
         this.#buf = Buffer.concat([this.#buf, Buffer.from(val)]);
         return this;
     }
-    writeBigUInt64LE(val){ return this.#write('writeBigUInt64LE', 8, val); }
-    writeBigUInt64BE(val){ return this.#write('writeBigUInt64BE', 8, val); }
-    writeBigInt64LE(val){ return this.#write('writeBigInt64LE', 8, val); }
-    writeBigInt64BE(val){ return this.#write('writeBigInt64BE', 8, val); }
+    writeBigUInt64LE(val){ return this.#write('writeBigUInt64LE', 8, BigInt(val)); }
+    writeBigUInt64BE(val){ return this.#write('writeBigUInt64BE', 8, BigInt(val)); }
+    writeBigInt64LE(val){ return this.#write('writeBigInt64LE', 8, BigInt(val)); }
+    writeBigInt64BE(val){ return this.#write('writeBigInt64BE', 8, BigInt(val)); }
     writeUInt32LE(val){ return this.#write('writeUInt32LE', 4, val); }
     writeUInt32BE(val){ return this.#write('writeUInt32BE', 4, val); }
     writeInt32LE(val){ return this.#write('writeInt32LE', 4, val); }
