@@ -203,3 +203,22 @@ const _forEachField = (obj, cb, path)=>{
 };
 
 E.forEachField = (obj, cb)=>_forEachField(obj, cb, '');
+
+// TODO: not working properly yet
+E.inherits = function(target, ...sources){
+    for (let source of sources) {
+        for (let k in source.prototype) {
+            target.prototype[k] = source.prototype[k];
+        }
+    }
+    return target;
+};
+
+E.pluck = (obj, props)=>{
+    let res = _.pick(obj, props);
+    if (_.isArray(props))
+        props.forEach(p=>{ delete obj[p]; });
+    else
+        delete obj[props];
+    return res;
+};
