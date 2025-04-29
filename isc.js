@@ -3,7 +3,7 @@ const {WebSocketServer} = require('ws');
 const {WebSocketHandle} = require('./wshandle.js');
 const {wait} = require('./util/concurrent.js');
 const {generateId} = require('./util/util.js');
-const {logn} = require('./util/logger.js');
+const log = require('./util/logger.js')('isc');
 
 const E = module.exports;
 
@@ -17,7 +17,7 @@ const MessageType = {
 
 E.createServer = ({service, exports, port})=>{
     const wss = new WebSocketServer({port});
-    logn(`Initialized service "${service}" on port ${port}`);
+    log.notice(`Initialized service "${service}" on port ${port}`);
     wss.on('connection', socket=>{
         socket.on('message', async data=>{
             const msg = JSON.parse(String(data));

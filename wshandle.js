@@ -1,5 +1,5 @@
 const {WebSocket} = require('ws');
-const {loge} = require('./util/logger.js');
+const log = require('./util/logger.js')('wshandle');
 
 function WebSocketHandle(data = {url, persistent, onOpen, onMessage, onError, onClose, retryTime}) {
     this._data = data;
@@ -32,7 +32,7 @@ WebSocketHandle.prototype.create = function() {
         if (onClose) onClose.call(this, code, reason);
         if (code === 1000) return;
         if (persistent) {
-            loge(`Connection error to WebSocket ${url}. Retrying in ${retryTime || 3000} ms...`);
+            log.error(`Connection error to WebSocket ${url}. Retrying in ${retryTime || 3000} ms...`);
             setTimeout(() => this.create(), retryTime || 3000);
         }
     });

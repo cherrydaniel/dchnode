@@ -1,15 +1,11 @@
-const os = require('os');
 const cluster = require('cluster');
-const path = require('path');
+const _ = require('lodash');
 const {env} = require('process');
-const cursor = require('ansi')(process.stdout);
-const {formatTime, formatDate} = require('./time.js');
-const {isString, escapeRegExp, rng} = require('./util.js');
-const {useLock, obtainLock} = require('./concurrent.js');
-const files = require('./files.js');
-const {Colors, applyColorizers, clr, colorize} = require('./color.js');
+const {formatTime} = require('./time.js');
+const {randomArrayItem, qw} = require('./util.js');
+const {Colors, colorize} = require('./color.js');
 
-const E = module.exports;
+const namespaceColors = {};
 
 const KawaiiEmojis = [
     '(づ｡◕‿‿◕｡)づ',
@@ -32,113 +28,68 @@ const LogLevel = {
     NONE: 6,
 };
 
-E.LogColorizers = [
-    [/(\d{4}-\d{2}-\d{2})/g, Colors.green],
-    [/(\d{2}:\d{2}:\d{2})/g, Colors.green],
-    [/(\bNOTICE\b)/g, Colors.blue],
-    [/(\bWARN\b)/g, Colors.yellow],
-    [/(\bERROR\b)/g, Colors.bold, Colors.red],
-    [/(\bCRIT\b)/g, Colors.bold, Colors.underline, Colors.overlined, Colors.bgRed],
-    [RegExp('('+KawaiiEmojis.map(v=>escapeRegExp(v)).join('|')+')', 'g'), Colors.bold, Colors.magenta],
-    [/^(\[.+\])/g, Colors.bold],
-];
-
-const timestamp = level=>(cluster.isPrimary ? `[P:${process.pid}]` : `[W${cluster.worker.id}:${cluster.worker.process.pid}]`) +
-    ' ' + formatTime() + ': ' +
-    (level?.length ? level+': ' : '');
-
-const logToFile = v=>{
-    if (+env.LOG_FILE_ENABLE && env.LOG_FILE_DIR)
-        files.append(path.join(env.APP_DIR||env.HOME, env.LOG_FILE_DIR, (env.LOG_FILE_PREFIX||'')+'_'+formatDate()+'.log'), v+os.EOL);
+const LevelColors = {
+    DEBUG: [Colors.white],
+    NOTICE: [Colors.blue],
+    WARN: [Colors.yellow],
+    ERROR: [Colors.bold, Colors.red],
+    CRIT: [Colors.bold, Colors.underline, Colors.overlined, Colors.bgRed],
+    KAWAII: [Colors.bold, Colors.magenta],
 };
 
-const doLog = async (args=[], level, prefix)=>{
-    if (LogLevel[env.LOG_LEVEL]||0>LogLevel[level]||0)
+const namespaceStamp = (namespace, namespaceColor)=>colorize(namespace, Colors.bold, Colors.italic, Colors[namespaceColor]);
+
+const procStamp = ()=>colorize(cluster.isPrimary ? `[P]` : `[W${cluster.worker.id}]`, Colors.bold);
+
+const timeStamp = ()=>colorize(formatTime(), Colors.green);
+
+const levelStamp = level=>level?.length ? colorize(level, ...LevelColors[level])+': ' : '';
+
+const stamp = ({namespace, namespaceColor, prefix, level})=>{
+    let res = namespaceStamp(namespace, namespaceColor)+' '+
+        procStamp()+' '+timeStamp()+': '+levelStamp(level);
+    if (prefix)
+        res += prefix+' ';
+    return res;
+};
+
+const doLog = async (args=[], opt={})=>{
+    let {consoleFn, threshold, level} = opt;
+    threshold ||= env.LOG_LEVEL;
+    if ((LogLevel[threshold]||0)>(LogLevel[level]||0))
         return;
-    useLock('terminal', ()=>{
-        if (prefix)
-            level = prefix;
-        args.forEach(v=>{
-            if (!isString(v)) {
-                try { v = JSON.stringify(v, null, 2); }
-                catch { v = String(v); }
-            }
-            v = timestamp(level)+v;
-            console.log(applyColorizers(v, E.LogColorizers));
-            logToFile(v);
-        });
-    });
+    args.forEach(v=>console[consoleFn](stamp(opt), v));
 };
 
-E.logd = (...args)=>doLog(args, 'DEBUG');
-E.logk = (...args)=>args.forEach(a=>doLog([a], 'KAWAII', rng.choice(KawaiiEmojis)));
-E.logn = (...args)=>doLog(args, 'NOTICE');
-E.logw = (...args)=>doLog(args, 'WARN');
-E.loge = (...args)=>doLog(args, 'ERROR');
-E.logc = (...args)=>doLog(args, 'CRIT');
-
-E.updateLine = v=>{
-    cursor.hide();
-    process.stdout.clearLine(0);
-    process.stdout.cursorTo(0);
-    process.stdout.write(v);
-};
-
-E.endLine = v=>{
-    if (v)
-        E.updateLine(v);
-    process.stdout.write(os.EOL);
-    cursor.show();
-};
-
-const loaders = {};
-
-const loadingText = [` Loading    `, ` Loading.   `, ` Loading..  `, ` Loading... `];
-let loadingTextFrame = 0;
-
-E.startLoading = v=>{
-    const lock = obtainLock('terminal');
-    logToFile(timestamp(LogLevel.NOTICE)+`Started loading: ${v}`);
-    loaders[v] = {
-        start: Date.now(),
-        lock,
-        interval: setInterval(async ()=>{
-            await lock;
-            if (!loaders[v])
-                return;
-            let blepSize = Math.max(1, Math.floor(loadingText[0].length/loadingText.length));
-            let blepPos = loadingTextFrame*blepSize;
-            let text = loadingText[loadingTextFrame%loadingText.length];
-            let res = '';
-            if (blepPos>0)
-                res += colorize(text.substring(0, blepPos), Colors.bgBlue);
-            res += colorize(text.substring(blepPos, blepPos+blepSize), Colors.bgWhite);
-            res += colorize(text.substring(blepPos+blepSize), Colors.bgBlue);
-            loadingTextFrame = (loadingTextFrame+1)%loadingText.length;
-            E.updateLine(res + ' ' + v);
-        }, 200),
+const createLogger = (namespace, opt={})=>{
+    opt = _.cloneDeep(opt);
+    let {
+        defaultLevel='NOTICE',
+        threshold,
+    } = opt;
+    if (namespaceColors[namespace]&&!opt.color)
+        opt.color = namespaceColors[namespace];
+    if (!opt.color)
+        opt.color = randomArrayItem(qw`red green yellow blue magenta cyan`);
+    if (!namespaceColors[namespace])
+        namespaceColors[namespace] = opt.color;
+    let baseOpt = {
+        namespace,
+        namespaceColor: opt.color,
+        consoleFn: 'log',
+        threshold,
     };
+    let handler = {
+        debug: (...args)=>doLog(args, {...baseOpt, level: 'DEBUG'}),
+        kawaii: (...args)=>args.forEach(a=>doLog([a], {...baseOpt, level: 'KAWAII', prefix: randomArrayItem(KawaiiEmojis)})),
+        notice: (...args)=>doLog(args, {...baseOpt, level: 'NOTICE'}),
+        warn: (...args)=>doLog(args, {...baseOpt, level: 'WARN'}),
+        error: (...args)=>doLog(args, {...baseOpt, level: 'ERROR', consoleFn: 'error'}),
+        crit: (...args)=>doLog(args, {...baseOpt, level: 'CRIT', consoleFn: 'error'}),
+        extend: (_namespace, _opt={})=>createLogger(namespace+':'+_namespace, {...opt, ..._opt}),
+    };
+    let loggerFn = (...args)=>handler[defaultLevel.toLowerCase()](...args);
+    return Object.assign(loggerFn, handler);
 };
 
-E.endLoading = async (v, note)=>{
-    if (!loaders[v])
-        return;
-    loaders[v].end = Date.now();
-    let {start, lock, interval, end} = loaders[v];
-    const dur = ((end-start)/1000).toFixed(1);
-    logToFile(timestamp(LogLevel.NOTICE)+`Ended loading in ${dur}s: ${v}${note ? ` - ${note}` : ''}`);
-    delete loaders[v];
-    let {release} = await lock;
-    clearInterval(interval);
-    E.updateLine(clr(Colors.bold, Colors.bgGreen)` DONE `+
-        clr(Colors.bold, Colors.bgBlack)` ${dur}s `+
-        ' '+v+
-        (note ? clr(Colors.italic)` - ${note}` : ''));
-    E.endLine();
-    release();
-};
-
-E.hookLoading = (handle, v, note)=>{
-    E.startLoading(v);
-    handle.onFinally(()=>E.endLoading(v, note));
-};
+module.exports = createLogger;

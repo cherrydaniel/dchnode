@@ -222,3 +222,5 @@ E.pluck = (obj, props)=>{
         delete obj[props];
     return res;
 };
+
+E.randomArrayItem = arr=>arr[Math.floor(Math.random()*arr.length)];
