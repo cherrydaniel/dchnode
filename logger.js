@@ -2,7 +2,7 @@ const cluster = require('cluster');
 const _ = require('lodash');
 const {env} = require('process');
 const {formatTime} = require('./time.js');
-const {randomArrayItem, qw} = require('./util.js');
+const {randomArrayItem, qw, isDevEnv} = require('./util.js');
 const {Colors, colorize} = require('./color.js');
 
 const namespaceColors = {};
@@ -39,15 +39,15 @@ const LevelColors = {
 
 const namespaceStamp = (namespace, namespaceColor)=>colorize(namespace, Colors.bold, Colors.italic, Colors[namespaceColor]);
 
-const procStamp = ()=>colorize(cluster.isPrimary ? `[P]` : `[W${cluster.worker.id}]`, Colors.bold);
+const procStamp = color=>colorize(cluster.isPrimary ? `[P]` : `[W${cluster.worker.id}]`, Colors.bold, Colors[color]);
 
-const timeStamp = ()=>colorize(formatTime(), Colors.green);
+const timeStamp = ()=>isDevEnv() ? colorize(formatTime(), Colors.green)+': ' : '';
 
 const levelStamp = level=>level?.length ? colorize(level, ...LevelColors[level])+': ' : '';
 
 const stamp = ({namespace, namespaceColor, prefix, level})=>{
     let res = namespaceStamp(namespace, namespaceColor)+' '+
-        procStamp()+' '+timeStamp()+': '+levelStamp(level);
+        procStamp(namespaceColor)+' '+timeStamp()+levelStamp(level);
     if (prefix)
         res += prefix+' ';
     return res;
